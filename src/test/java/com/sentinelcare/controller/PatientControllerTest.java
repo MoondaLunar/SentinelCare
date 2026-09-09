@@ -3,12 +3,14 @@ package com.sentinelcare.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sentinelcare.config.SecurityConfig;
 import com.sentinelcare.entity.Patient;
-import com.sentinelcare.repository.PatientRepository;
+import com.sentinelcare.security.JwtTokenService;
+import com.sentinelcare.service.PatientService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -39,13 +41,19 @@ class PatientControllerTest {
     private ObjectMapper objectMapper;
 
     @MockBean
-    private PatientRepository patientRepository;
+    private PatientService patientService;
+
+    @MockBean
+    private JwtTokenService jwtTokenService;
+
+    @MockBean
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    @WithMockUser
+    @WithMockUser(username = "admin", roles = "ADMIN")
     void getAllPatientsShouldReturnPatientsFromRepository() throws Exception {
         Patient patient = new Patient("Alice Johnson", LocalDate.of(1988, 3, 10), "Asthma", "Ongoing monitor");
-        when(patientRepository.findAll()).thenReturn(List.of(patient));
+        when(patientService.getVisiblePatients("admin")).thenReturn(List.of(patient));
 
         mockMvc.perform(get("/api/v1/patients"))
             .andExpect(status().isOk())
@@ -54,10 +62,23 @@ class PatientControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(username = "clinician", roles = "CLINICIAN")
+    void getAllPatientsForClinicianShouldReturnOnlyAssignedPatients() throws Exception {
+        Patient patient = new Patient("Alice Johnson", LocalDate.of(1988, 3, 10), "Asthma", "Ongoing monitor");
+        patient.setAssignedClinician("clinician");
+        when(patientService.getVisiblePatients("clinician")).thenReturn(List.of(patient));
+
+        mockMvc.perform(get("/api/v1/patients"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].assignedClinician").value("clinician"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
     void getPatientWhenExistsShouldReturnPatient() throws Exception {
         Patient patient = new Patient("Bob Smith", LocalDate.of(1975, 11, 2), "Diabetes", "Dietary guidance");
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(patientService.canAccessPatient(1L)).thenReturn(true);
+        when(patientService.getPatient(1L)).thenReturn(Optional.of(patient));
 
         mockMvc.perform(get("/api/v1/patients/1"))
             .andExpect(status().isOk())
@@ -66,20 +87,22 @@ class PatientControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(username = "admin", roles = "ADMIN")
     void getPatientWhenMissingShouldReturnNotFound() throws Exception {
-        when(patientRepository.findById(99L)).thenReturn(Optional.empty());
+        when(patientService.canAccessPatient(99L)).thenReturn(true);
+        when(patientService.getPatient(99L)).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/v1/patients/99"))
             .andExpect(status().isNotFound());
     }
 
     @Test
-    @WithMockUser
-    void createPatientShouldPersistAndReturnSavedPatient() throws Exception {
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    void createPatientShouldAssignPatientToActingClinician() throws Exception {
         Patient request = new Patient("Carol White", LocalDate.of(1995, 7, 22), "Migraine", "No current issues");
-        when(patientRepository.save(any(Patient.class))).thenAnswer(invocation -> {
+        when(patientService.createPatient(any(Patient.class))).thenAnswer(invocation -> {
             Patient saved = invocation.getArgument(0, Patient.class);
+            saved.setAssignedClinician("admin");
             return Objects.requireNonNull(saved);
         });
 
@@ -88,6 +111,18 @@ class PatientControllerTest {
                 .content(Objects.requireNonNull(objectMapper.writeValueAsString(request))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.name").value("Carol White"))
-            .andExpect(jsonPath("$.diagnosis").value("Migraine"));
+            .andExpect(jsonPath("$.diagnosis").value("Migraine"))
+            .andExpect(jsonPath("$.assignedClinician").value("admin"));
+    }
+
+    @Test
+    @WithMockUser(username = "clinician", roles = "CLINICIAN")
+    void createPatientWhenClinicianShouldBeForbidden() throws Exception {
+        Patient request = new Patient("Carol White", LocalDate.of(1995, 7, 22), "Migraine", "No current issues");
+
+        mockMvc.perform(post("/api/v1/patients")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(request))))
+            .andExpect(status().isForbidden());
     }
 }

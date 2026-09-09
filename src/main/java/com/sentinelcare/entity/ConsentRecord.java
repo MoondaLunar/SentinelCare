@@ -32,6 +32,9 @@ public class ConsentRecord {
     @Column(name = "granted", nullable = false)
     private boolean granted;
 
+    @Column(name = "status", nullable = false)
+    private ConsentStatus status = ConsentStatus.ACTIVE;
+
     @Column(name = "source", nullable = false)
     private String source;
 
@@ -79,6 +82,24 @@ public class ConsentRecord {
 
     public void setGranted(boolean granted) {
         this.granted = granted;
+        if (!granted) {
+            this.status = ConsentStatus.REVOKED;
+        } else if (this.status == ConsentStatus.REVOKED || this.status == ConsentStatus.EXPIRED) {
+            this.status = ConsentStatus.ACTIVE;
+        }
+    }
+
+    public ConsentStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ConsentStatus status) {
+        this.status = status;
+        if (status == ConsentStatus.REVOKED) {
+            this.granted = false;
+        } else if (status == ConsentStatus.ACTIVE) {
+            this.granted = true;
+        }
     }
 
     public String getSource() {

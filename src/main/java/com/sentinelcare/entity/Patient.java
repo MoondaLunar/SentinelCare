@@ -45,6 +45,9 @@ public class Patient {
     @Column(name = "notes", length = 2048)
     private String notes;
 
+    @Column(name = "assigned_clinician")
+    private String assignedClinician;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -118,6 +121,15 @@ public class Patient {
 
     public void setNotes(String notes) {
         this.notes = notes;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    public String getAssignedClinician() {
+        return assignedClinician;
+    }
+
+    public void setAssignedClinician(String assignedClinician) {
+        this.assignedClinician = assignedClinician;
         this.updatedAt = OffsetDateTime.now();
     }
 

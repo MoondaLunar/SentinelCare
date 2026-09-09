@@ -2,12 +2,14 @@ package com.sentinelcare.controller;
 
 import com.sentinelcare.config.SecurityConfig;
 import com.sentinelcare.entity.AuditEntry;
+import com.sentinelcare.security.JwtTokenService;
 import com.sentinelcare.service.AuditService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,6 +32,12 @@ class AuditControllerTest {
 
     @MockBean
     private AuditService auditService;
+
+    @MockBean
+    private JwtTokenService jwtTokenService;
+
+    @MockBean
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
     @WithMockUser
