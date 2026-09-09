@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface AuditEntryRepository extends JpaRepository<AuditEntry, Long> {
+    java.util.List<AuditEntry> findByEntityTypeAndEntityId(String entityType, Long entityId);
 }

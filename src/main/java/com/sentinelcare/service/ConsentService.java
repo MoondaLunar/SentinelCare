@@ -11,28 +11,38 @@ import java.util.Optional;
 @Service
 public class ConsentService {
 
-    /**
-     * Consent records are a key compliance control; they capture which patient permissions were
-     * granted or revoked and by what source. This service keeps that record-keeping logic easy to
-     * extend for consent expiry checks and audit trail generation.
-     */
     private final ConsentRecordRepository consentRecordRepository;
+    private final PatientAuthorizationService patientAuthorizationService;
 
-    public ConsentService(ConsentRecordRepository consentRecordRepository) {
+    public ConsentService(ConsentRecordRepository consentRecordRepository, PatientAuthorizationService patientAuthorizationService) {
         this.consentRecordRepository = consentRecordRepository;
+        this.patientAuthorizationService = patientAuthorizationService;
     }
 
     public List<ConsentRecord> getAllConsents() {
-        return consentRecordRepository.findAll();
+        if (patientAuthorizationService.isAdmin()) {
+            return consentRecordRepository.findAll();
+        }
+        String username = patientAuthorizationService.currentUsername();
+        if (username == null || username.isBlank()) {
+            return List.of();
+        }
+        return consentRecordRepository.findByPatientAssignedClinician(username);
     }
 
     public List<ConsentRecord> getActiveConsents() {
-        return consentRecordRepository.findAll().stream()
+        return getAllConsents().stream()
             .filter(record -> record.getStatus() == ConsentStatus.ACTIVE && record.isGranted())
             .toList();
     }
 
     public ConsentRecord createConsent(ConsentRecord consentRecord) {
+        if (consentRecord == null || consentRecord.getPatient() == null) {
+            throw new IllegalArgumentException("Consent record requires a patient.");
+        }
+        if (!patientAuthorizationService.canAccessPatient(consentRecord.getPatient())) {
+            throw new SecurityException("Clinician cannot operate on unauthorized patient consent.");
+        }
         if (consentRecord.getStatus() == null) {
             consentRecord.setStatus(consentRecord.isGranted() ? ConsentStatus.ACTIVE : ConsentStatus.REVOKED);
         }
@@ -42,12 +52,21 @@ public class ConsentService {
     public ConsentRecord revokeConsent(Long id) {
         ConsentRecord consentRecord = consentRecordRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Consent record not found: " + id));
-
+        if (!patientAuthorizationService.isAdmin() && !patientAuthorizationService.canAccessPatient(consentRecord.getPatient())) {
+            throw new SecurityException("Clinician cannot revoke unauthorized consent.");
+        }
         consentRecord.setStatus(ConsentStatus.REVOKED);
         return consentRecordRepository.save(consentRecord);
     }
 
     public Optional<ConsentRecord> findById(Long id) {
-        return consentRecordRepository.findById(id);
+        Optional<ConsentRecord> consentRecord = consentRecordRepository.findById(id);
+        if (consentRecord.isEmpty()) {
+            return Optional.empty();
+        }
+        if (patientAuthorizationService.isAdmin()) {
+            return consentRecord;
+        }
+        return patientAuthorizationService.canAccessPatient(consentRecord.get().getPatient()) ? consentRecord : Optional.empty();
     }
 }
