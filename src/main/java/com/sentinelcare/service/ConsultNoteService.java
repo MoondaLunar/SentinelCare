@@ -9,21 +9,32 @@ import java.util.List;
 @Service
 public class ConsultNoteService {
 
-    /**
-     * Consult notes represent privacy-boundary clinical communication. They are separated from the
-     * patient profile to support safe sharing and later retrieval across specialist workflows.
-     */
     private final ConsultNoteRepository consultNoteRepository;
+    private final PatientAuthorizationService patientAuthorizationService;
 
-    public ConsultNoteService(ConsultNoteRepository consultNoteRepository) {
+    public ConsultNoteService(ConsultNoteRepository consultNoteRepository, PatientAuthorizationService patientAuthorizationService) {
         this.consultNoteRepository = consultNoteRepository;
+        this.patientAuthorizationService = patientAuthorizationService;
     }
 
     public List<ConsultNote> getAllNotes() {
-        return consultNoteRepository.findAll();
+        if (patientAuthorizationService.isAdmin()) {
+            return consultNoteRepository.findAll();
+        }
+        String username = patientAuthorizationService.currentUsername();
+        if (username == null || username.isBlank()) {
+            return List.of();
+        }
+        return consultNoteRepository.findByPatientAssignedClinician(username);
     }
 
     public ConsultNote createNote(ConsultNote consultNote) {
+        if (consultNote == null || consultNote.getPatient() == null) {
+            throw new IllegalArgumentException("Consult note requires a patient.");
+        }
+        if (!patientAuthorizationService.canAccessPatient(consultNote.getPatient())) {
+            throw new SecurityException("Clinician cannot create notes for an unauthorized patient.");
+        }
         return consultNoteRepository.save(consultNote);
     }
 }

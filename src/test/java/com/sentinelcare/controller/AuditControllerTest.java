@@ -40,10 +40,9 @@ class AuditControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "ADMIN")
     void auditEndpointShouldReturnAuditEntries() throws Exception {
         AuditEntry entry = new AuditEntry("clinician-a", "READ", "Patient", 42L, "Viewed patient record");
-        entry = new AuditEntry("clinician-a", "READ", "Patient", 42L, "Viewed patient record");
         when(auditService.getAllEntries()).thenReturn(List.of(entry));
 
         mockMvc.perform(get("/api/v1/audit"))
@@ -52,7 +51,7 @@ class AuditControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "ADMIN")
     void filteredAuditEndpointShouldReturnByEntityTypeAndId() throws Exception {
         AuditEntry entry = new AuditEntry("clinician-a", "READ", "Patient", 42L, "Viewed patient record");
         when(auditService.getEntriesForEntity("Patient", 42L)).thenReturn(List.of(entry));

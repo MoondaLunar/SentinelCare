@@ -62,6 +62,9 @@ public class Patient {
         this.birthdate = birthdate;
         this.diagnosis = diagnosis;
         this.notes = notes;
+        OffsetDateTime now = OffsetDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
     }
 
     @PrePersist
@@ -73,7 +76,16 @@ public class Patient {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = OffsetDateTime.now();
+        touchUpdatedAt();
+    }
+
+    private void touchUpdatedAt() {
+        OffsetDateTime now = OffsetDateTime.now();
+        if (this.updatedAt != null && !now.isAfter(this.updatedAt)) {
+            this.updatedAt = this.updatedAt.plusNanos(1);
+            return;
+        }
+        this.updatedAt = now;
     }
 
     public Long getId() {
@@ -86,7 +98,7 @@ public class Patient {
 
     public void setName(String name) {
         this.name = name;
-        this.updatedAt = OffsetDateTime.now();
+        touchUpdatedAt();
     }
 
     public void setCreatedAt(OffsetDateTime createdAt) {
@@ -103,7 +115,7 @@ public class Patient {
 
     public void setBirthdate(LocalDate birthdate) {
         this.birthdate = birthdate;
-        this.updatedAt = OffsetDateTime.now();
+        touchUpdatedAt();
     }
 
     public String getDiagnosis() {
@@ -112,7 +124,7 @@ public class Patient {
 
     public void setDiagnosis(String diagnosis) {
         this.diagnosis = diagnosis;
-        this.updatedAt = OffsetDateTime.now();
+        touchUpdatedAt();
     }
 
     public String getNotes() {
@@ -121,7 +133,7 @@ public class Patient {
 
     public void setNotes(String notes) {
         this.notes = notes;
-        this.updatedAt = OffsetDateTime.now();
+        touchUpdatedAt();
     }
 
     public String getAssignedClinician() {
@@ -130,7 +142,7 @@ public class Patient {
 
     public void setAssignedClinician(String assignedClinician) {
         this.assignedClinician = assignedClinician;
-        this.updatedAt = OffsetDateTime.now();
+        touchUpdatedAt();
     }
 
     public OffsetDateTime getCreatedAt() {

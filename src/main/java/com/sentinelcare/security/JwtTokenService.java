@@ -3,6 +3,7 @@ package com.sentinelcare.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -14,10 +15,16 @@ import java.util.function.Function;
 @Service
 public class JwtTokenService {
 
-    private static final String SECRET = "sentinel-care-super-secret-key-for-demo-application-2026";
     private static final long EXPIRATION_MS = 86_400_000L;
 
-    private final SecretKey secretKey = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+    private final SecretKey secretKey;
+
+    public JwtTokenService(@Value("${jwt.signing-key}") String signingKey) {
+        if (signingKey == null || signingKey.isBlank()) {
+            throw new IllegalStateException("JWT signing key must be configured via jwt.signing-key.");
+        }
+        this.secretKey = Keys.hmacShaKeyFor(signingKey.getBytes(StandardCharsets.UTF_8));
+    }
 
     public String generateToken(UserDetails userDetails) {
         Date now = new Date();
@@ -37,7 +44,7 @@ public class JwtTokenService {
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isExpired(token);
+        return username != null && username.equals(userDetails.getUsername()) && !isExpired(token);
     }
 
     public boolean isExpired(String token) {

@@ -3,9 +3,9 @@ package com.sentinelcare.config;
 import com.sentinelcare.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -26,13 +26,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    /**
-     * Role-based baseline for the healthcare platform.
-     *
-     * The application now distinguishes between operational roles rather than exposing all
-     * endpoints to every caller. This keeps the prototype aligned with a real clinical access model
-     * while still remaining lightweight enough for local development.
-     */
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
@@ -43,10 +36,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/patients/**").hasAnyRole("ADMIN", "CLINICIAN")
                 .requestMatchers(HttpMethod.POST, "/api/v1/patients").hasRole("ADMIN")
-                .requestMatchers("/api/v1/consents/**", "/api/v1/consult-notes/**", "/api/v1/audit/**", "/api/v1/gdpr/**").hasAnyRole("ADMIN", "CLINICIAN")
+                .requestMatchers("/api/v1/consents/**").hasAnyRole("ADMIN", "CLINICIAN")
+                .requestMatchers("/api/v1/consult-notes/**").hasAnyRole("ADMIN", "CLINICIAN")
+                .requestMatchers(HttpMethod.GET, "/api/v1/audit").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/v1/audit/**").hasAnyRole("ADMIN", "CLINICIAN")
+                .requestMatchers("/api/v1/gdpr/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
-            .httpBasic(Customizer.withDefaults())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
@@ -59,6 +55,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Profile({"demo", "local", "test"})
     public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
         UserDetails admin = User.withUsername("admin")
             .password(passwordEncoder.encode("admin"))

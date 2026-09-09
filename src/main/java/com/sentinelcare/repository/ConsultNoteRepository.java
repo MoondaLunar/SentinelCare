@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ConsultNoteRepository extends JpaRepository<ConsultNote, Long> {
+    java.util.List<ConsultNote> findByPatientAssignedClinician(String assignedClinician);
 }

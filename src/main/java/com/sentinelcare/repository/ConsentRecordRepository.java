@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ConsentRecordRepository extends JpaRepository<ConsentRecord, Long> {
+    java.util.List<ConsentRecord> findByPatientAssignedClinician(String assignedClinician);
 }

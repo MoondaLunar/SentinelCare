@@ -3,4 +3,8 @@ target/
 .vscode/
 *.iml
 *.log
+*.txt
+*.out
+*.dump
+*.dumpstream
 .DS_Store
