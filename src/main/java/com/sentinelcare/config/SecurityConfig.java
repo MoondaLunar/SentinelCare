@@ -13,6 +13,13 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    /**
+     * Initial security baseline for the demo platform.
+     *
+     * This is intentionally permissive for the API surface so the prototype can be exercised
+     * during development. In production, this will evolve toward OAuth2/JWT-based identity,
+     * role-based access control, and patient-scoped authorization.
+     */
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http

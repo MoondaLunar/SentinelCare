@@ -1,7 +1,7 @@
 package com.sentinelcare.controller;
 
 import com.sentinelcare.entity.Patient;
-import com.sentinelcare.repository.PatientRepository;
+import com.sentinelcare.service.PatientService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,26 +17,30 @@ import java.util.List;
 @RequestMapping("/api/v1")
 public class PatientController {
 
-    private final PatientRepository patientRepository;
+    /**
+     * Service layer keeps controller logic thin and isolates persistence details.
+     * The controller is intentionally focused on HTTP concerns rather than data access.
+     */
+    private final PatientService patientService;
 
-    public PatientController(PatientRepository patientRepository) {
-        this.patientRepository = patientRepository;
+    public PatientController(PatientService patientService) {
+        this.patientService = patientService;
     }
 
     @GetMapping("/patients")
     public List<Patient> getAllPatients() {
-        return patientRepository.findAll();
+        return patientService.getAllPatients();
     }
 
     @GetMapping("/patients/{id}")
     public ResponseEntity<Patient> getPatient(@PathVariable Long id) {
-        return patientRepository.findById(id)
+        return patientService.getPatient(id)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/patients")
     public Patient createPatient(@Valid @RequestBody Patient patient) {
-        return patientRepository.save(patient);
+        return patientService.createPatient(patient);
     }
 }

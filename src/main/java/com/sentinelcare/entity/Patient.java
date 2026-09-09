@@ -15,6 +15,12 @@ import org.hibernate.envers.Audited;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
+/**
+ * Core patient record.
+ *
+ * The entity is intentionally audited so treatment changes, consent updates, and sensitive
+ * demographics can be reconstructed later for compliance and forensic review.
+ */
 @Entity
 @Table(name = "patients")
 @Audited

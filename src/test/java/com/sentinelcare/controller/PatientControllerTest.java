@@ -14,6 +14,8 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Objects;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -76,11 +78,14 @@ class PatientControllerTest {
     @WithMockUser
     void createPatientShouldPersistAndReturnSavedPatient() throws Exception {
         Patient request = new Patient("Carol White", LocalDate.of(1995, 7, 22), "Migraine", "No current issues");
-        when(patientRepository.save(any(Patient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(patientRepository.save(any(Patient.class))).thenAnswer(invocation -> {
+            Patient saved = invocation.getArgument(0, Patient.class);
+            return Objects.requireNonNull(saved);
+        });
 
         mockMvc.perform(post("/api/v1/patients")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(request))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.name").value("Carol White"))
             .andExpect(jsonPath("$.diagnosis").value("Migraine"));
