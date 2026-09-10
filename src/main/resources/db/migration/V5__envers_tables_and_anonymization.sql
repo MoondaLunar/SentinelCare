@@ -14,7 +14,7 @@ CREATE TABLE revinfo (
 CREATE TABLE patients_aud (
     id BIGINT NOT NULL,
     rev INTEGER NOT NULL,
-    revtype TINYINT NOT NULL,
+    revtype SMALLINT NOT NULL,
     name VARCHAR(255),
     birthdate DATE,
     diagnosis VARCHAR(255),
@@ -29,7 +29,7 @@ CREATE TABLE patients_aud (
 CREATE TABLE consent_records_aud (
     id BIGINT NOT NULL,
     rev INTEGER NOT NULL,
-    revtype TINYINT NOT NULL,
+    revtype SMALLINT NOT NULL,
     patient_id BIGINT,
     consent_type VARCHAR(255),
     granted BOOLEAN,
@@ -43,7 +43,7 @@ CREATE TABLE consent_records_aud (
 CREATE TABLE consult_notes_aud (
     id BIGINT NOT NULL,
     rev INTEGER NOT NULL,
-    revtype TINYINT NOT NULL,
+    revtype SMALLINT NOT NULL,
     patient_id BIGINT,
     provider_name VARCHAR(255),
     note_text VARCHAR(4096),
@@ -55,7 +55,7 @@ CREATE TABLE consult_notes_aud (
 CREATE TABLE audit_entries_aud (
     id BIGINT NOT NULL,
     rev INTEGER NOT NULL,
-    revtype TINYINT NOT NULL,
+    revtype SMALLINT NOT NULL,
     actor VARCHAR(255),
     action VARCHAR(255),
     entity_type VARCHAR(255),
@@ -69,3 +69,7 @@ CREATE TABLE audit_entries_aud (
 -- Anonymized retention keeps the clinical record but scrubs identifiers;
 -- birthdate must be nullable for that.
 ALTER TABLE patients ALTER COLUMN birthdate DROP NOT NULL;
+
+-- The hand-written V1 column used TEXT but the entity maps notes to
+-- varchar(2048); ddl-auto: validate does not treat TEXT as compatible.
+ALTER TABLE patients ALTER COLUMN notes TYPE VARCHAR(2048);
