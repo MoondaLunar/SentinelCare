@@ -1,5 +1,6 @@
 package com.sentinelcare.controller;
 
+import com.sentinelcare.dto.ConsentCreateRequest;
 import com.sentinelcare.entity.ConsentRecord;
 import com.sentinelcare.service.ConsentService;
 import jakarta.validation.Valid;
@@ -41,8 +42,8 @@ public class ConsentController {
 
     @PostMapping("/consents")
     @PreAuthorize("hasAnyRole('ADMIN','CLINICIAN')")
-    public ConsentRecord createConsent(@Valid @RequestBody ConsentRecord consentRecord) {
-        return consentService.createConsent(consentRecord);
+    public ConsentRecord createConsent(@Valid @RequestBody ConsentCreateRequest request) {
+        return consentService.createConsent(request);
     }
 
     @PostMapping("/consents/{id}/revoke")

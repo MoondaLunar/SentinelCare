@@ -1,5 +1,6 @@
 package com.sentinelcare.controller;
 
+import com.sentinelcare.dto.ConsultNoteCreateRequest;
 import com.sentinelcare.entity.ConsultNote;
 import com.sentinelcare.service.ConsultNoteService;
 import jakarta.validation.Valid;
@@ -31,7 +32,7 @@ public class ConsultNoteController {
     }
 
     @PostMapping("/consult-notes")
-    public ConsultNote createNote(@Valid @RequestBody ConsultNote consultNote) {
-        return consultNoteService.createNote(consultNote);
+    public ConsultNote createNote(@Valid @RequestBody ConsultNoteCreateRequest request) {
+        return consultNoteService.createNote(request);
     }
 }

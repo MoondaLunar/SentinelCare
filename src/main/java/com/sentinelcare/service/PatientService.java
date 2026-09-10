@@ -2,6 +2,7 @@ package com.sentinelcare.service;
 
 import com.sentinelcare.entity.Patient;
 import com.sentinelcare.repository.PatientRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -48,7 +49,7 @@ public class PatientService {
 
     public Patient createPatient(Patient patient) {
         if (!patientAuthorizationService.isAdmin()) {
-            throw new IllegalStateException("Patient creation is restricted to ADMIN users.");
+            throw new AccessDeniedException("Patient creation is restricted to ADMIN users.");
         }
         return patientRepository.save(patient);
     }

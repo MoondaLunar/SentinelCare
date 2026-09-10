@@ -5,6 +5,8 @@ import com.sentinelcare.entity.Patient;
 import com.sentinelcare.repository.AuditEntryRepository;
 import com.sentinelcare.repository.PatientRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -60,7 +62,29 @@ public class AuditService {
             .toList();
     }
 
-    public AuditEntry createEntry(AuditEntry auditEntry) {
+    /**
+     * Single choke point for the audit write path: every event record goes
+     * through this method, so nothing writes audit_entries on its own.
+     */
+    @Transactional
+    public AuditEntry record(String action, String entityType, Long entityId, String details) {
+        String actor = patientAuthorizationService.currentUsername();
+        if (actor == null || actor.isBlank()) {
+            actor = "system";
+        }
+        return createEntry(new AuditEntry(actor, action, entityType, entityId, details));
+    }
+
+    /**
+     * Security-event records must survive the rollback of the operation they
+     * describe, so they run in a transaction of their own.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public AuditEntry recordDenied(String action, String entityType, Long entityId, String details) {
+        return record(action, entityType, entityId, details);
+    }
+
+    private AuditEntry createEntry(AuditEntry auditEntry) {
         return auditEntryRepository.save(auditEntry);
     }
 
