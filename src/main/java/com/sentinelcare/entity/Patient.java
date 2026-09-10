@@ -34,8 +34,10 @@ public class Patient {
     @Column(name = "name", nullable = false)
     private String name;
 
+    // Nullable in the schema so the anonymization path can scrub the date of birth;
+    // @NotNull still enforces it as required input when patients are created.
     @NotNull
-    @Column(name = "birthdate", nullable = false)
+    @Column(name = "birthdate", nullable = true)
     private LocalDate birthdate;
 
     @NotBlank
