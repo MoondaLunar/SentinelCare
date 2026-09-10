@@ -1,7 +1,9 @@
 package com.sentinelcare.security;
 
+import com.sentinelcare.dto.ConsentCreateRequest;
 import com.sentinelcare.entity.AuditEntry;
 import com.sentinelcare.entity.ConsentRecord;
+import com.sentinelcare.entity.ConsentStatus;
 import com.sentinelcare.entity.ConsultNote;
 import com.sentinelcare.entity.Patient;
 import com.sentinelcare.repository.AuditEntryRepository;
@@ -13,6 +15,7 @@ import com.sentinelcare.service.ConsentService;
 import com.sentinelcare.service.ConsultNoteService;
 import com.sentinelcare.service.PatientAuthorizationService;
 import com.sentinelcare.service.PatientService;
+import com.sentinelcare.web.ApiProblemWriter;
 import io.jsonwebtoken.MalformedJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,8 +37,11 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -54,6 +61,9 @@ class SecurityCleanupTest {
 
     @Mock
     private AuditEntryRepository auditEntryRepository;
+
+    @Mock
+    private ApiProblemWriter problemWriter;
 
     @Test
     void anonymousUsersCannotAccessPatientData() {
@@ -91,7 +101,7 @@ class SecurityCleanupTest {
     @Test
     void clinicianCannotAccessOtherCliniciansConsentRecords() {
         PatientAuthorizationService authorizationService = new PatientAuthorizationService(patientRepository);
-        ConsentService consentService = new ConsentService(consentRecordRepository, authorizationService);
+        ConsentService consentService = new ConsentService(consentRecordRepository, patientRepository, authorizationService, auditService);
 
         Patient patient = new Patient("Other patient", LocalDate.of(1980, 1, 1), "Asthma", "notes");
         patient.setAssignedClinician("clinician-b");
@@ -116,7 +126,7 @@ class SecurityCleanupTest {
     @Test
     void clinicianCannotAccessOtherCliniciansConsultNotes() {
         PatientAuthorizationService authorizationService = new PatientAuthorizationService(patientRepository);
-        ConsultNoteService consultNoteService = new ConsultNoteService(consultNoteRepository, authorizationService);
+        ConsultNoteService consultNoteService = new ConsultNoteService(consultNoteRepository, patientRepository, authorizationService, auditService);
 
         Patient patient = new Patient("Other patient", LocalDate.of(1980, 1, 1), "Asthma", "notes");
         patient.setAssignedClinician("clinician-b");
@@ -167,7 +177,7 @@ class SecurityCleanupTest {
     void invalidJwtFailsCleanly() throws Exception {
         JwtTokenService jwtTokenService = mock(JwtTokenService.class);
         UserDetailsService userDetailsService = username -> User.withUsername(username).password("pw").roles("ADMIN").build();
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenService, userDetailsService);
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenService, userDetailsService, problemWriter);
 
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpServletResponse response = mock(HttpServletResponse.class);
@@ -178,7 +188,7 @@ class SecurityCleanupTest {
 
         filter.doFilter(request, response, chain);
 
-        verify(response).sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT");
+        verify(problemWriter).write(eq(response), eq(HttpStatus.UNAUTHORIZED), eq("Unauthorized"), eq("Invalid or expired JWT"));
         verify(chain, never()).doFilter(any(), any());
     }
 
@@ -186,7 +196,7 @@ class SecurityCleanupTest {
     void expiredJwtFailsCleanly() throws Exception {
         JwtTokenService jwtTokenService = mock(JwtTokenService.class);
         UserDetailsService userDetailsService = username -> User.withUsername(username).password("pw").roles("ADMIN").build();
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenService, userDetailsService);
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenService, userDetailsService, problemWriter);
 
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpServletResponse response = mock(HttpServletResponse.class);
@@ -197,7 +207,7 @@ class SecurityCleanupTest {
 
         filter.doFilter(request, response, chain);
 
-        verify(response).sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT");
+        verify(problemWriter).write(eq(response), eq(HttpStatus.UNAUTHORIZED), eq("Unauthorized"), eq("Invalid or expired JWT"));
         verify(chain, never()).doFilter(any(), any());
     }
 
@@ -222,5 +232,67 @@ class SecurityCleanupTest {
 
         SecurityContextHolder.clearContext();
         assertTrue(patientService.getVisiblePatients(null).isEmpty());
+    }
+
+    @Test
+    void consentCreateAuthorizesAgainstDbRowNotRequestData() {
+        PatientAuthorizationService authorizationService = new PatientAuthorizationService(patientRepository);
+        ConsentService consentService = new ConsentService(consentRecordRepository, patientRepository, authorizationService, auditService);
+
+        Patient patient = new Patient("Other patient", LocalDate.of(1980, 1, 1), "Asthma", "notes");
+        patient.setAssignedClinician("clinician-b");
+        when(patientRepository.findById(99L)).thenReturn(Optional.of(patient));
+
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken(
+                User.withUsername("clinician-a").password("secret").authorities(new SimpleGrantedAuthority("ROLE_CLINICIAN")).build(),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_CLINICIAN"))
+            )
+        );
+
+        ConsentCreateRequest request = new ConsentCreateRequest();
+        request.setPatientId(99L);
+        request.setConsentType("treatment");
+        request.setGranted(true);
+        request.setSource("clinic-a");
+
+        assertThrows(SecurityException.class, () -> consentService.createConsent(request));
+
+        verify(patientRepository).findById(99L);
+        verify(consentRecordRepository, never()).save(any());
+        verify(auditService).recordDenied("CONSENT_CREATE_DENIED", "Patient", 99L,
+            "consent creation attempted on unauthorized patient");
+    }
+
+    @Test
+    void consentCreateSucceedsForAssignedPatientWithServerDerivedStatus() {
+        PatientAuthorizationService authorizationService = new PatientAuthorizationService(patientRepository);
+        ConsentService consentService = new ConsentService(consentRecordRepository, patientRepository, authorizationService, auditService);
+
+        Patient patient = new Patient("Own patient", LocalDate.of(1980, 1, 1), "Asthma", "notes");
+        patient.setAssignedClinician("clinician-a");
+        when(patientRepository.findById(99L)).thenReturn(Optional.of(patient));
+        when(consentRecordRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken(
+                User.withUsername("clinician-a").password("secret").authorities(new SimpleGrantedAuthority("ROLE_CLINICIAN")).build(),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_CLINICIAN"))
+            )
+        );
+
+        ConsentCreateRequest request = new ConsentCreateRequest();
+        request.setPatientId(99L);
+        request.setConsentType("treatment");
+        request.setGranted(true);
+        request.setSource("clinic-a");
+
+        ConsentRecord saved = consentService.createConsent(request);
+
+        assertEquals(ConsentStatus.ACTIVE, saved.getStatus());
+        verify(consentRecordRepository).save(any());
+        verify(auditService).record(eq("CONSENT_CREATED"), eq("ConsentRecord"), any(), anyString());
     }
 }
