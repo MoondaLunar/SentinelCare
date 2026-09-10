@@ -1,9 +1,11 @@
 package com.sentinelcare.security;
 
+import com.sentinelcare.web.ApiProblemWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,12 +19,17 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String INVALID_TOKEN_DETAIL = "Invalid or expired JWT";
+
     private final JwtTokenService jwtTokenService;
     private final UserDetailsService userDetailsService;
+    private final ApiProblemWriter problemWriter;
 
-    public JwtAuthenticationFilter(JwtTokenService jwtTokenService, UserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(JwtTokenService jwtTokenService, UserDetailsService userDetailsService,
+                                   ApiProblemWriter problemWriter) {
         this.jwtTokenService = jwtTokenService;
         this.userDetailsService = userDetailsService;
+        this.problemWriter = problemWriter;
     }
 
     @Override
@@ -36,20 +43,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (!authorizationHeader.startsWith("Bearer ")) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT");
+            problemWriter.write(response, HttpStatus.UNAUTHORIZED, "Unauthorized", INVALID_TOKEN_DETAIL);
             return;
         }
 
         String token = authorizationHeader.substring(7).trim();
         if (token.isEmpty()) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT");
+            problemWriter.write(response, HttpStatus.UNAUTHORIZED, "Unauthorized", INVALID_TOKEN_DETAIL);
             return;
         }
 
         try {
             String username = jwtTokenService.extractUsername(token);
             if (username == null || username.isBlank()) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT");
+                problemWriter.write(response, HttpStatus.UNAUTHORIZED, "Unauthorized", INVALID_TOKEN_DETAIL);
                 return;
             }
 
@@ -64,12 +71,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                 } else {
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT");
+                    problemWriter.write(response, HttpStatus.UNAUTHORIZED, "Unauthorized", INVALID_TOKEN_DETAIL);
                     return;
                 }
             }
         } catch (RuntimeException ex) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT");
+            problemWriter.write(response, HttpStatus.UNAUTHORIZED, "Unauthorized", INVALID_TOKEN_DETAIL);
             return;
         }
 
