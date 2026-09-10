@@ -15,8 +15,8 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,8 +50,8 @@ class GdprControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void erasePatientDataWhenMissingShouldReturnNotFoundProblem() throws Exception {
-        willThrow(new ResourceNotFoundException("Patient not found: 99"))
-            .given(gdprService).erasePatientData(99L);
+        doThrow(new ResourceNotFoundException("Patient not found: 99"))
+            .when(gdprService).erasePatientData(99L);
 
         mockMvc.perform(delete("/api/v1/gdpr/patients/99"))
             .andExpect(status().isNotFound())
@@ -62,8 +62,8 @@ class GdprControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void erasePatientDataWithRetentionDependentsShouldReturnConflictProblem() throws Exception {
-        willThrow(new ConflictException("Patient record is retained: 1 consent(s) and 0 consult note(s) exist."))
-            .given(gdprService).erasePatientData(42L);
+        doThrow(new ConflictException("Patient record is retained: 1 consent(s) and 0 consult note(s) exist."))
+            .when(gdprService).erasePatientData(42L);
 
         mockMvc.perform(delete("/api/v1/gdpr/patients/42"))
             .andExpect(status().isConflict())
@@ -85,8 +85,8 @@ class GdprControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void anonymizePatientDataWhenMissingShouldReturnNotFoundProblem() throws Exception {
-        willThrow(new ResourceNotFoundException("Patient not found: 99"))
-            .given(gdprService).anonymizePatientData(99L);
+        doThrow(new ResourceNotFoundException("Patient not found: 99"))
+            .when(gdprService).anonymizePatientData(99L);
 
         mockMvc.perform(post("/api/v1/gdpr/patients/99/anonymize"))
             .andExpect(status().isNotFound())

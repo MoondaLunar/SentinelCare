@@ -50,7 +50,7 @@ public class ConsultNoteService {
             .orElseThrow(() -> new ResourceNotFoundException("Patient not found: " + request.getPatientId()));
 
         if (!patientAuthorizationService.canAccessPatient(patient)) {
-            auditService.recordDenied("NOTE_CREATE_DENIED", "Patient", patient.getId(),
+            auditService.recordDenied("NOTE_CREATE_DENIED", "Patient", request.getPatientId(),
                 "consult note creation attempted on unauthorized patient");
             throw new SecurityException("Clinician cannot create notes for an unauthorized patient.");
         }

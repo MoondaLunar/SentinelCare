@@ -61,7 +61,7 @@ public class ConsentService {
             .orElseThrow(() -> new ResourceNotFoundException("Patient not found: " + request.getPatientId()));
 
         if (!patientAuthorizationService.canAccessPatient(patient)) {
-            auditService.recordDenied("CONSENT_CREATE_DENIED", "Patient", patient.getId(),
+            auditService.recordDenied("CONSENT_CREATE_DENIED", "Patient", request.getPatientId(),
                 "consent creation attempted on unauthorized patient");
             throw new SecurityException("Clinician cannot operate on unauthorized patient consent.");
         }

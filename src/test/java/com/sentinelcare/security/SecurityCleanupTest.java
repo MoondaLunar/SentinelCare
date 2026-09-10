@@ -42,8 +42,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,6 +66,9 @@ class SecurityCleanupTest {
 
     @Mock
     private ApiProblemWriter problemWriter;
+
+    @Mock
+    private AuditService auditService;
 
     @Test
     void anonymousUsersCannotAccessPatientData() {
@@ -108,7 +113,7 @@ class SecurityCleanupTest {
         ConsentRecord record = new ConsentRecord(patient, "treatment", true, "clinic-b");
 
         when(consentRecordRepository.findByPatientAssignedClinician("clinician-a")).thenReturn(List.of());
-        when(consentRecordRepository.findByPatientAssignedClinician("clinician-b")).thenReturn(List.of(record));
+        lenient().when(consentRecordRepository.findByPatientAssignedClinician("clinician-b")).thenReturn(List.of(record));
 
         SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken(
@@ -120,7 +125,7 @@ class SecurityCleanupTest {
 
         assertTrue(consentService.getAllConsents().isEmpty());
         assertTrue(consentService.getActiveConsents().isEmpty());
-        verify(consentRecordRepository).findByPatientAssignedClinician("clinician-a");
+        verify(consentRecordRepository, times(2)).findByPatientAssignedClinician("clinician-a");
     }
 
     @Test
@@ -133,7 +138,7 @@ class SecurityCleanupTest {
         ConsultNote note = new ConsultNote(patient, "Dr. B", "secret note");
 
         when(consultNoteRepository.findByPatientAssignedClinician("clinician-a")).thenReturn(List.of());
-        when(consultNoteRepository.findByPatientAssignedClinician("clinician-b")).thenReturn(List.of(note));
+        lenient().when(consultNoteRepository.findByPatientAssignedClinician("clinician-b")).thenReturn(List.of(note));
 
         SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken(
@@ -158,7 +163,7 @@ class SecurityCleanupTest {
 
         when(patientRepository.findByAssignedClinician("clinician-a")).thenReturn(List.of());
         when(patientRepository.findById(12L)).thenReturn(Optional.of(patient));
-        when(auditEntryRepository.findByEntityTypeAndEntityId("Patient", 12L)).thenReturn(List.of(entry));
+        lenient().when(auditEntryRepository.findByEntityTypeAndEntityId("Patient", 12L)).thenReturn(List.of(entry));
 
         SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken(
