@@ -1,6 +1,11 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:sentinelcare;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    # Plain H2 (no PostgreSQL mode): the PG dialect generates TINYINT for Envers
+    # revtype / ordinal enums, which H2's PG mode rejects, and the migrations use
+    # Postgres types (TIMESTAMPTZ) H2 cannot parse. Schema therefore comes from
+    # the entities below. Postgres fidelity is verified against a real Postgres;
+    # Testcontainers is the eventual upgrade if in-CI DDL fidelity is needed.
+    url: jdbc:h2:mem:sentinelcare;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
     password: 
     driver-class-name: org.h2.Driver
