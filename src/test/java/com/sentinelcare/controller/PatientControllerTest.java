@@ -116,6 +116,16 @@ class PatientControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    void createPatientWithoutBirthdateShouldReturnValidationProblem() throws Exception {
+        mockMvc.perform(post("/api/v1/patients")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"No Birthdate\",\"diagnosis\":\"Dx\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.fieldErrors.birthdate").value("must not be null"));
+    }
+
+    @Test
     @WithMockUser(username = "clinician", roles = "CLINICIAN")
     void createPatientWhenClinicianShouldBeForbidden() throws Exception {
         Patient request = new Patient("Carol White", LocalDate.of(1995, 7, 22), "Migraine", "No current issues");

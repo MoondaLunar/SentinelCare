@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import com.sentinelcare.validation.OnCreate;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.hibernate.envers.Audited;
@@ -34,9 +35,11 @@ public class Patient {
     @Column(name = "name", nullable = false)
     private String name;
 
-    // Nullable in the schema so the anonymization path can scrub the date of birth;
-    // @NotNull still enforces it as required input when patients are created.
-    @NotNull
+    // Nullable in the schema so the anonymization path can scrub the date of birth.
+    // The constraint lives in the OnCreate group so it is required input on the
+    // create path but does not block updates (Hibernate's update-time validation
+    // runs the Default group, which no longer includes this field).
+    @NotNull(groups = OnCreate.class)
     @Column(name = "birthdate", nullable = true)
     private LocalDate birthdate;
 

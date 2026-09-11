@@ -2,10 +2,12 @@ package com.sentinelcare.controller;
 
 import com.sentinelcare.entity.Patient;
 import com.sentinelcare.service.PatientService;
-import jakarta.validation.Valid;
+import com.sentinelcare.validation.OnCreate;
+import jakarta.validation.groups.Default;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,7 +51,7 @@ public class PatientController {
     }
 
     @PostMapping("/patients")
-    public Patient createPatient(@Valid @RequestBody Patient patient) {
+    public Patient createPatient(@Validated({Default.class, OnCreate.class}) @RequestBody Patient patient) {
         return patientService.createPatient(patient);
     }
 }
