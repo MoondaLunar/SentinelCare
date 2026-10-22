@@ -15,7 +15,7 @@ import java.util.function.Function;
 @Service
 public class JwtTokenService {
 
-    private static final long EXPIRATION_MS = 86_400_000L;
+    private static final long EXPIRATION_MS = 900_000L;
 
     private final SecretKey secretKey;
 
