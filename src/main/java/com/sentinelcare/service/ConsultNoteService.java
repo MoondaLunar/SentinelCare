@@ -32,9 +32,10 @@ public class ConsultNoteService {
         if (consultNote == null || consultNote.getPatient() == null) {
             throw new IllegalArgumentException("Consult note requires a patient.");
         }
-        if (!patientAuthorizationService.canAccessPatient(consultNote.getPatient())) {
+        if (!patientAuthorizationService.canAccessPatient(consultNote.getPatient().getId())) {
             throw new SecurityException("Clinician cannot create notes for an unauthorized patient.");
         }
+        consultNote.setPatient(patientAuthorizationService.loadAuthorizedPatient(consultNote.getPatient().getId()));
         return consultNoteRepository.save(consultNote);
     }
 }
