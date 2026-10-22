@@ -40,12 +40,13 @@ public class ConsentService {
         if (consentRecord == null || consentRecord.getPatient() == null) {
             throw new IllegalArgumentException("Consent record requires a patient.");
         }
-        if (!patientAuthorizationService.canAccessPatient(consentRecord.getPatient())) {
+        if (!patientAuthorizationService.canAccessPatient(consentRecord.getPatient().getId())) {
             throw new SecurityException("Clinician cannot operate on unauthorized patient consent.");
         }
         if (consentRecord.getStatus() == null) {
             consentRecord.setStatus(consentRecord.isGranted() ? ConsentStatus.ACTIVE : ConsentStatus.REVOKED);
         }
+        consentRecord.setPatient(patientAuthorizationService.loadAuthorizedPatient(consentRecord.getPatient().getId()));
         return consentRecordRepository.save(consentRecord);
     }
 
