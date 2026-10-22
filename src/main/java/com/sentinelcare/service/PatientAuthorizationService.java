@@ -59,10 +59,20 @@ public class PatientAuthorizationService {
         if (username == null || username.isBlank()) {
             return false;
         }
-        return username.equals(patient.getAssignedClinician());
+        if (patient.getId() == null) return false;
+        return canAccessPatient(patient.getId());
+    }
+
+    public Patient loadAuthorizedPatient(Long patientId) {
+        if (patientId == null) throw new SecurityException("Patient identifier required.");
+        Patient patient = patientRepository.findById(patientId)
+            .orElseThrow(() -> new SecurityException("Patient not found or unauthorized."));
+        if (!canAccessPatient(patientId)) throw new SecurityException("Patient not found or unauthorized.");
+        return patient;
     }
 
     public boolean canAccessPatient(Long patientId) {
+        if (patientId == null) return false;
         if (isAdmin()) {
             return true;
         }
